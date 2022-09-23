@@ -1,0 +1,108 @@
+<mat-expansion-panel *ngIf="(schema.expanded === true || schema.expanded === false) && !inExpansion"
+    [ngStyle]="schema.style" [ngClass]="schema.class" [expanded]="schema.expanded">
+    <mat-expansion-panel-header>
+        <mat-panel-title>{{label}}</mat-panel-title>
+        <mat-panel-description>{{schema.description}}</mat-panel-description>
+    </mat-expansion-panel-header>
+    <ca-json-schema-form #child [label]="label" [name]="name" [value]="value" (valueChange)="setAndEmit($event)"
+        [switch]="switch" [rootValue]="rootValue" [rootSchema]="rootSchema" [schema]="schema" [inExpansion]="true"
+        [base]="base" (schemaChange)="schemaChange.emit()">
+    </ca-json-schema-form>
+</mat-expansion-panel>
+<div *ngIf="(schema.expanded === null || schema.expanded === undefined) || inExpansion" role="form">
+    <!-- object row wrap layout -->
+    <span *ngIf="getLayout() === 'object'" [fxLayout]="schema.layout === 'vertical' ? 'column' : 'row wrap'"
+        [ngStyle]="schema.style" [ngClass]="schema.class">
+        <div *ngFor="let op of orderedProperties" [fxLayout]="schema.layout !== 'vertical' ? 'column' : 'row wrap'">
+            <div *ngFor=" let x of op | keyvalue:originalOrder" style="display: flex; margin: 2px">
+                <div *ngIf="x.value && (x.value.type || x.value.$ref)">
+                    <ca-json-schema-form #children [name]="x.key" [label]="x.value.title ? x.value.title : x.key"
+                        [value]="value ? value[x.key] : undefined" (valueChange)="onValueChange(x.key, $event)"
+                        [switch]="value ? value[schema.switch] : undefined" [rootValue]="rootValue"
+                        [rootSchema]="rootSchema" [schema]="x.value" [parentSchema]="schema"
+                        [required]="schema.required ? schema.required.includes(x.key) : false"
+                        [hideUndefined]="schema.hideUndefined" [base]="base" (schemaChange)="schemaChange.emit()">
+                    </ca-json-schema-form>
+                </div>
+            </div>
+        </div>
+
+    </span>
+    <!-- array row wrap layout -->
+    <span *ngIf="getLayout() === 'array'" [fxLayout]="schema.layout === 'vertical' ? 'column' : 'row wrap'"
+        [ngStyle]="schema.style" [ngClass]="schema.class">
+        <div *ngFor="let i of arrayIndices" style="display: flex; margin: 2px; position: relative"
+            (mouseenter)="hover=i" (mouseleave)="hover=null">
+            <ca-json-schema-form #children [label]="getLabel()" [value]="value[i]"
+                (valueChange)="setIndexAndEmit(i, $event)" inArray="true" [rootValue]="rootValue"
+                [rootSchema]="rootSchema" [schema]="schema.items" [base]="base" (schemaChange)="schemaChange.emit()">
+            </ca-json-schema-form>
+        </div>
+    </span>
+    <!-- array chips layout -->
+    <span *ngIf="getLayout() === 'chips'">
+        <mat-form-field [ngStyle]="schema.style" [ngClass]="schema.class">
+            <mat-chip-list #chipList aria-label="Fruit selection" cdkDropList cdkDropListOrientation="horizontal"
+                (cdkDropListDropped)="dropChip($event)">
+                <mat-chip *ngFor="let v of value" [removable]="!readOnly" (removed)="removeChip(v)" cdkDrag>
+                    {{v}}
+                    <mat-icon matChipRemove>cancel</mat-icon>
+                </mat-chip>
+                <input [placeholder]="schema.title" autocomplete="off" [matChipInputFor]="chipList"
+                    [matChipInputSeparatorKeyCodes]="separatorKeysCodes" (matChipInputTokenEnd)="addChip($event)"
+                    [disabled]="readOnly">
+            </mat-chip-list>
+        </mat-form-field>
+    </span>
+    <!-- array-select -->
+    <div *ngIf="getLayout() === 'array-select'">
+        <mat-form-field [ngStyle]="schema.style" [ngClass]="schema.class">
+            <mat-label>{{label}}</mat-label>
+            <mat-select multiple [value]="value" (focus)="focus()" (selectionChange)="change($event)"
+                [disabled]="readOnly">
+                <mat-option *ngFor="let choice of choices | async" [value]="choice.value">
+                    {{choice.name}}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+        <p class="error mat-typography">{{error()}}</p>
+    </div>
+    <!-- date element -->
+    <div *ngIf="getLayout() === 'date'">
+        <mat-form-field [ngStyle]="schema.style" [ngClass]="schema.class">
+            <mat-label>{{label}}</mat-label>
+            <input autocomplete="off" matInput [value]="parseDate(value, schema.dateFormat)"
+                (dateChange)="change($event)" [matDatepicker]="picker" [disabled]="readOnly" style="width: 100%">
+            <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+            <mat-datepicker #picker></mat-datepicker>
+        </mat-form-field>
+        <p class="error mat-typography">{{error()}}</p>
+    </div>
+    <!-- checkbox element -->
+    <div *ngIf="getLayout() === 'checkbox'" [ngStyle]="schema.style" [ngClass]="schema.class"
+        style="margin: 6px; margin-top: 12px;">
+        <mat-checkbox [checked]="value" (change)="change($event)" [disabled]="readOnly">
+            {{label}}</mat-checkbox>
+        <p class="error mat-typography">{{error()}}</p>
+    </div>
+    <!-- single element -->
+    <div *ngIf="getLayout() === 'single'">
+        <mat-form-field [ngStyle]="schema.style" [ngClass]="schema.class">
+            <mat-label>{{label}}</mat-label>
+            <input [disabled]="readOnly" autocomplete="off" matInput [type]="getInputType(schema)" [value]="value"
+                (input)="change($event)" [step]="getStepValue(schema)"
+                (focus)="getInputType(schema) === 'password' ? value = '':''">
+        </mat-form-field>
+        <p class="error mat-typography">{{error()}}</p>
+    </div>
+    <!-- textarea element -->
+    <div *ngIf="getLayout() === 'textarea'">
+        <mat-form-field [ngStyle]="schema.style" [ngClass]="schema.class">
+            <mat-label>{{label}}</mat-label>
+            <textarea [disabled]="readOnly" matInput [value]="value" (input)="change($event)" [ngStyle]="schema.style"
+                [ngClass]="schema.class"></textarea>
+        </mat-form-field>
+        <p class="error mat-typography">{{error()}}</p>
+    </div>
+</div>
+<ng-template libWidgetHost></ng-template>

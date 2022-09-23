@@ -1,0 +1,14 @@
+<!-- {{schema | json}} -->
+<mat-expansion-panel expanded>
+    <mat-expansion-panel-header>
+        <mat-panel-title>
+            Form Based on the Schema
+        </mat-panel-title>
+    </mat-expansion-panel-header>
+    <button mat-raised-button (click)="update()">Apply</button>
+    {{value | json}}
+    <ca-json-schema-form [(value)]="instance" [schema]="value" (errorChange)="validation=$event">
+    </ca-json-schema-form>
+    {{validation}}
+</mat-expansion-panel>
+{{stringify(instance)}}

@@ -1,0 +1,29 @@
+{
+  "name": "@dashjoin/json-schema-form",
+  "version": "0.9.3",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dashjoin/json-schema-form"
+  },
+  "bugs": {
+    "url": "https://github.com/dashjoin/json-schema-form/issues"
+  },
+  "keywords": [
+    "json-schema",
+    "angular",
+    "angular2",
+    "form-builder",
+    "autocomplete",
+    "json pointer"
+  ],
+  "peerDependencies": {
+    "@angular/common": "~14",
+    "@angular/core": "~14",
+    "jsonata": "^1.8.6"
+  },
+  "dependencies": {
+    "tslib": "^2.4.0"
+  },
+  "sideEffects": true
+}

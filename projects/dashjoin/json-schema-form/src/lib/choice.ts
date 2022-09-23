@@ -1,0 +1,114 @@
+import { forkJoin, Observable, of } from 'rxjs';
+import { Schema } from './schema';
+import { map, publishReplay, refCount, switchMap } from 'rxjs/operators';
+import jsonata from 'jsonata';
+
+/**
+ * class backing a select / autocomplete option
+ */
+export interface Choice {
+
+    /**
+     * select value
+     */
+    value: any;
+
+    /**
+     * display name
+     */
+    name: string;
+}
+
+/**
+ * interface for choice handlers for select / autocomplete choices
+ */
+export interface ChoiceHandler {
+
+    /**
+     * user typed in autocomplete field
+     */
+    filter(value: any, schema: Schema, current: string, choices: Observable<Choice[]>): Observable<Choice[]>;
+
+    /**
+     * return a single choice (i.e. convert value to Choice)
+     */
+    choice(value: any, schema: Schema): Observable<Choice>;
+
+    /**
+     * delay between keystrokes before new data is loaded
+     */
+    debounceTime(): number;
+}
+
+/**
+ * default implementation that handles choices based on schema fields.
+ * can be overriden via schema.displayWith
+ */
+export class DefaultChoiceHandler implements ChoiceHandler {
+
+    constructor() { }
+
+    /**
+     * http cache for REST request on config/Table (i.e. schema requests)
+     */
+    cache: Observable<Choice[]>;
+
+    /**
+     * filter after keystroke
+     */
+    filter(value: any, schema: Schema, current: string, choices: Observable<Choice[]>): Observable<Choice[]> {
+        return choices.pipe(map(arr => {
+            if (!current) {
+                return arr;
+            }
+            const res = arr.filter(i => this.include(i, current));
+            return res;
+        }));
+    }
+
+    /**
+     * called from filter, intended to allow subclasses to easily change filter algorithm
+     */
+    include(i: Choice, current: string): boolean {
+        return ('' + i.name).toLowerCase().includes(('' + current).toLowerCase());
+    }
+
+    /**
+     * default choice implementation: just reuse value as name
+     * check for localName
+     */
+    choice(value: any, schema: Schema): Observable<Choice> {
+        if (schema.displayWith === 'localName') {
+            for (const delimiter of ['/', '#', ':', '.']) {
+                const parts = value.split(delimiter);
+                if (parts.length > 1) {
+                    if (parts[parts.length - 1] === '') {
+                        return of({ value, name: parts[parts.length - 2] });
+                    } else {
+                        return of({ value, name: parts[parts.length - 1] });
+                    }
+                }
+            }
+            return of({ value, name: value });
+        }
+        if (schema.jsonata) {
+            if (typeof value === 'object') {
+                return of(value);
+            } else {
+                // initially, value is a simple string
+                return of({ value, name: value });
+            }
+        }
+        if (schema.displayWithChoices) {
+            return of({ value, name: schema.displayWithChoices[schema.choices.indexOf(value)] });
+        }
+        return of({ value, name: value });
+    }
+
+    /**
+     * default: no delay
+     */
+    debounceTime() {
+        return 0;
+    }
+}

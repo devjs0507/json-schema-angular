@@ -1,0 +1,12 @@
+<mat-card>
+    <mat-card-header>
+        <mat-card-subtitle [style.color]="error === null ? 'green' : 'red'">
+            {{error === null ? "Form is valid" : "Form is invalid: "+error}}</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+        <ca-json-schema-form [(value)]="value" [schema]="schema" [label]="schema.title" (errorChange)="error=$event"
+            (schemaChange)="schemaChange()">
+        </ca-json-schema-form>
+    </mat-card-content>
+</mat-card>
+{{value | json}}
